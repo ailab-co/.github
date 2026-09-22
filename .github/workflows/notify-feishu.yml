@@ -15,7 +15,7 @@ name: 飞书通知（公共）
 #   ✅ Release 发布        —— 正式站上线没人知道，就是缺这条
 #   ✅ Issue 新开          —— 有人需要回应
 #   ✅ main 上 CI 挂了     —— 唯一算「出事」的机器信号
-#   ✅ push 到 main 且提交信息带 [群]  —— 发送者自己决定要不要发
+#   ✅ push 到 main 且提交信息**第一行以 [群] 开头** —— 发送者自己决定要不要发
 #   ❌ 普通 push、其他分支、Issue 评论 —— 不发
 #
 # 密钥：组织级 LARK_APP_ID / LARK_APP_SECRET（永酷小管家），各仓 secrets: inherit 即可。
@@ -74,13 +74,13 @@ jobs:
               # 只发「合进默认分支」的，开/关/改标题都不发
               if [ "$ACTION" = "closed" ] && [ "$PR_MERGED" = "true" ] && [ "$PR_BASE" = "$DEFAULT_BRANCH" ]; then
                 SEND=yes; TITLE="✅ $ACTOR 合并了 PR #$PR_NUM → $DEFAULT_BRANCH"
-                BODY=$(printf '**%s**\n\n%s' "$PR_TITLE" "$(printf '%s' "$PR_BODY" | head -c 400)")
+                BODY=$(printf '**%s**\n\n%s' "$PR_TITLE" "$(printf '%s' "$PR_BODY" | grep -v '^Co-Authored-By:' | head -c 400)")
                 URL="$PR_URL"; COLOR="green"
               fi ;;
             release)
               if [ "$ACTION" = "published" ]; then
                 SEND=yes; TITLE="🚀 $ACTOR 发布了 ${REL_TAG}"
-                BODY=$(printf '**%s**\n\n%s' "${REL_NAME:-$REL_TAG}" "$(printf '%s' "$REL_BODY" | head -c 400)")
+                BODY=$(printf '**%s**\n\n%s' "${REL_NAME:-$REL_TAG}" "$(printf '%s' "$REL_BODY" | grep -v '^Co-Authored-By:' | head -c 400)")
                 URL="$REL_URL"; COLOR="purple"
               fi ;;
             issues)
@@ -90,10 +90,13 @@ jobs:
                 URL="$ISSUE_URL"; COLOR="orange"
               fi ;;
             push)
-              # 只有 push 到默认分支 且 提交信息带 [群] 才发 —— 发送者自己决定
-              if [ "$REF_NAME" = "$DEFAULT_BRANCH" ] && printf '%s' "$PUSH_MSG" | grep -q '\[群\]'; then
+              # 只有 push 到默认分支 且 提交信息**第一行以 [群] 开头** 才发 —— 发送者自己决定。
+              # 🔴 2026-09-22 教训：初版是「正文任意位置含 [群]」，结果我描述规则的提交信息里
+              #   写了「提交带[群] 才发」，三个仓各发了一条。锚定到行首才不会被"提到它"误触。
+              FIRST=$(printf '%s' "$PUSH_MSG" | head -1)
+              if [ "$REF_NAME" = "$DEFAULT_BRANCH" ] && printf '%s' "$FIRST" | grep -q '^\[群\]'; then
                 SEND=yes; TITLE="📥 $ACTOR 推了代码（主动通知）"
-                BODY=$(printf '%s' "$PUSH_MSG" | sed 's/\[群\]//g' | head -c 500)
+                BODY=$(printf '%s' "$PUSH_MSG" | sed '1s/^\[群\] *//' | grep -v '^Co-Authored-By:' | head -c 500)
                 URL="$PUSH_URL"; COLOR="blue"
               fi ;;
             workflow_run)
