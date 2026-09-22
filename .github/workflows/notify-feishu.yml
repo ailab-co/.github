@@ -25,7 +25,7 @@ on:
   workflow_call:
     inputs:
       chat_id:
-        description: 发到哪个群（oc_…），从 brain/registry.md 通知登记表抄
+        description: 发到哪个群（oc_…），群名↔id 见 brain/_meta/aliases.md
         required: true
         type: string
       on_ci_failure:
