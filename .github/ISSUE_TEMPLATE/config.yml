@@ -1,0 +1,10 @@
+# 组织级 Issue 模板（.github-private 对所有私有仓生效）
+# 规范：brain/rfc/20260922-Bug建议反馈走Issue三档模板与维护者triage
+#
+# 三档门槛递减：Bug（严）→ 建议（中）→ 反馈（最低，一段话）
+# 🔴 拿不准算什么就用「反馈」。分类是维护者的活，不是提交者的。
+blank_issues_enabled: false
+contact_links:
+  - name: 📋 派活（任务 Issue）
+    url: https://github.com/ailab-co/brain/blob/main/rfc/0002-Bet与Issue的运作规范.md
+    about: 给人或 Agent 派一件确定的活。各仓自己的「任务」模板；不确定能不能行的去 brain 开 Bet

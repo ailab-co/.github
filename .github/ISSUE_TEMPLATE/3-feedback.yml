@@ -1,0 +1,46 @@
+name: 📝 反馈
+description: 不确定算什么——看到了、遇到了、觉得怪、不知道该不该改。门槛最低，一段话就行
+title: "[反馈] "
+labels: [feedback, needs-triage]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **不确定算不算问题？那就是该用这个。** 分类不是你的事，维护者看完会定性。
+        没有严重度、没有分类、没有复现步骤——那些都是维护者补的。
+
+  - type: dropdown
+    id: reporter
+    attributes:
+      label: 提出者
+      options:
+        - 我本人
+        - 我的 Agent
+        - 转述别人的
+    validations:
+      required: true
+
+  - type: input
+    id: reporter_context
+    attributes:
+      label: 如果是 Agent 或转述：来源
+      placeholder: "例：YongkuTV 会话在测出片时 / 转述牛洋口头说的"
+
+  - type: textarea
+    id: what
+    attributes:
+      label: 你看到了什么
+      description: 怎么写都行，一段话
+    validations:
+      required: true
+
+  - type: input
+    id: where
+    attributes:
+      label: 在哪看到的（选填）
+      placeholder: "页面 / 命令 / 文件"
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: 截图或原文（选填）

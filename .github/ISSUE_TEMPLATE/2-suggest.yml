@@ -1,0 +1,72 @@
+name: 💡 建议
+description: 想要更好：新功能、小需求、体验、设计、文档。不是出错，是想改进
+title: "[建议] "
+labels: [enhancement, needs-triage]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        说清**哪里不方便**就够了。⛔ **不用给方案**——怎么改是维护者的事，别为了填表编一个。
+
+  - type: dropdown
+    id: reporter
+    attributes:
+      label: 提出者
+      options:
+        - 我本人
+        - 我的 Agent
+        - 转述别人的
+    validations:
+      required: true
+
+  - type: input
+    id: reporter_context
+    attributes:
+      label: 如果是 Agent 或转述：来源
+      placeholder: "例：hiring 会话在做工作台时 / 转述客户 09-22 反馈"
+
+  - type: dropdown
+    id: kind
+    attributes:
+      label: 类型
+      options:
+        - 新功能
+        - 现有功能改进
+        - 使用体验（流程、操作）
+        - 视觉 / 设计
+        - 文档 / 说明
+    validations:
+      required: true
+
+  - type: textarea
+    id: pain
+    attributes:
+      label: 现在的问题
+      description: 为什么想要这个——现在哪里不方便、绕了什么路
+    validations:
+      required: true
+
+  - type: textarea
+    id: wish
+    attributes:
+      label: 希望变成什么样
+      description: 一两句就行
+    validations:
+      required: true
+
+  - type: dropdown
+    id: who
+    attributes:
+      label: 影响谁
+      options:
+        - 只有我
+        - 团队里好几个人
+        - 客户 / 外部使用者
+    validations:
+      required: true
+
+  - type: textarea
+    id: ref
+    attributes:
+      label: 参考（选填）
+      description: 截图、别的产品怎么做的、相关 Issue

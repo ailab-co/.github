@@ -1,0 +1,103 @@
+name: 🐛 Bug
+description: 明确出错了：说得清「应该怎样 / 实际怎样」。说不清就用「反馈」
+title: "[Bug] "
+labels: [bug, needs-triage]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **填完不用找人**——会自动指派该仓维护者。他的义务是回应（定性 / 转派 / 说明不改），不是必须修。
+        拿不准是不是 Bug？**改用「📝 反馈」模板**，分类不是你的事。
+
+  - type: dropdown
+    id: reporter
+    attributes:
+      label: 提出者
+      description: GitHub 显示的作者不一定是真正发现问题的人（AI 会话开的 Issue 作者是人的账号）
+      options:
+        - 我本人
+        - 我的 Agent（下面写清哪个项目、当时在干什么）
+        - 转述别人的（下面写清是谁）
+    validations:
+      required: true
+
+  - type: input
+    id: reporter_context
+    attributes:
+      label: 如果是 Agent 或转述：来源
+      placeholder: "例：shortdrama 会话在跑 bin/asset pull 时 / 转述崔磊 09-22 微信"
+
+  - type: dropdown
+    id: severity
+    attributes:
+      label: 严重度
+      options:
+        - P0 · 挡住工作了，现在就要修
+        - P1 · 功能错了，但能绕开
+        - P2 · 显示 / 体验不对
+        - P3 · 小毛病
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤
+      description: 一步一步写，别人照着做能撞上同一个问题
+      placeholder: |
+        1. 打开 …
+        2. 点 …
+        3. 输入 …
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: 预期结果
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: 实际结果
+      description: 🔴 报错**原样贴**，别改写、别总结——AI 最怕人把报错改成自己的理解。截图也贴这里
+    validations:
+      required: true
+
+  - type: dropdown
+    id: reproducible
+    attributes:
+      label: 能稳定复现吗
+      options:
+        - 每次都能
+        - 偶发
+        - 只出现过一次
+    validations:
+      required: true
+
+  - type: input
+    id: env
+    attributes:
+      label: 版本 / commit / 环境
+      placeholder: "例：main@a1b2c3d · Chrome 130 · macOS 15"
+    validations:
+      required: true
+
+  - type: textarea
+    id: ai_hint
+    attributes:
+      label: 🤖 给 AI 的线索（选填）
+      description: 你猜跟哪个文件 / 命令 / 接口有关？**不确定就空着，别乱猜**
+      placeholder: |
+        涉及命令：bin/asset pull
+        可能的文件：scripts/xxx.py
+        相关 Issue：#12
+
+  - type: checkboxes
+    id: agent_ready
+    attributes:
+      label: 给 Agent 的状态
+      options:
+        - label: 上面的信息够任何人的 Agent 直接开工，不用再问我
