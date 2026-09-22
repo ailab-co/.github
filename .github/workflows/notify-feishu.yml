@@ -1,0 +1,138 @@
+name: 飞书通知（公共）
+
+# ═══════════════════════════════════════════════════════════════════════
+# 组织级公共 workflow —— 各仓只需 6 行调用它，规则改这一处全组织生效。
+# 登记表：brain/registry.md「飞书通知登记表」（哪个仓发、发到哪个群、为什么）。
+# 规范：brain/rfc/20260922（通知规则那节，2026-09-22 cabin 定，先跑一段看密度再调）。
+#
+# 🔴 为什么重做（2026-09-22）：
+#   旧版只装在 brain / shortdrama 两个仓，且「每次 push 都发」——
+#   于是 cabin 改一行也进群，而谢海在 gateway-ext 两周合了 30 个 PR、发了 3 个 release
+#   **一条没发**。不是「谁推」的问题，是「哪个仓装了 + 发什么」的问题。
+#
+# 规则：按事件重要性发，不按人。
+#   ✅ PR 合进 main        —— 有东西落地了
+#   ✅ Release 发布        —— 正式站上线没人知道，就是缺这条
+#   ✅ Issue 新开          —— 有人需要回应
+#   ✅ main 上 CI 挂了     —— 唯一算「出事」的机器信号
+#   ✅ push 到 main 且提交信息带 [群]  —— 发送者自己决定要不要发
+#   ❌ 普通 push、其他分支、Issue 评论 —— 不发
+#
+# 密钥：组织级 LARK_APP_ID / LARK_APP_SECRET（永酷小管家），各仓 secrets: inherit 即可。
+# ═══════════════════════════════════════════════════════════════════════
+
+on:
+  workflow_call:
+    inputs:
+      chat_id:
+        description: 发到哪个群（oc_…），从 brain/registry.md 通知登记表抄
+        required: true
+        type: string
+      on_ci_failure:
+        description: 传 CI workflow 的 conclusion（由调用方在 workflow_run 里传）
+        required: false
+        type: string
+        default: ""
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 判断要不要发 + 组卡片
+        id: build
+        env:
+          EVENT: ${{ github.event_name }}
+          ACTION: ${{ github.event.action }}
+          REPO: ${{ github.repository }}
+          ACTOR: ${{ github.actor }}
+          REF_NAME: ${{ github.ref_name }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          PUSH_MSG: ${{ github.event.head_commit.message }}
+          PUSH_URL: ${{ github.event.head_commit.url }}
+          PR_NUM: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          PR_MERGED: ${{ github.event.pull_request.merged }}
+          PR_BASE: ${{ github.event.pull_request.base.ref }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          REL_TAG: ${{ github.event.release.tag_name }}
+          REL_NAME: ${{ github.event.release.name }}
+          REL_URL: ${{ github.event.release.html_url }}
+          REL_BODY: ${{ github.event.release.body }}
+          ISSUE_NUM: ${{ github.event.issue.number }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_URL: ${{ github.event.issue.html_url }}
+          ISSUE_LABELS: ${{ join(github.event.issue.labels.*.name, ',') }}
+          CI_CONCLUSION: ${{ inputs.on_ci_failure }}
+          CI_URL: ${{ github.event.workflow_run.html_url }}
+          CI_NAME: ${{ github.event.workflow_run.name }}
+        run: |
+          set -euo pipefail
+          SEND=no
+          case "$EVENT" in
+            pull_request)
+              # 只发「合进默认分支」的，开/关/改标题都不发
+              if [ "$ACTION" = "closed" ] && [ "$PR_MERGED" = "true" ] && [ "$PR_BASE" = "$DEFAULT_BRANCH" ]; then
+                SEND=yes; TITLE="✅ $ACTOR 合并了 PR #$PR_NUM → $DEFAULT_BRANCH"
+                BODY=$(printf '**%s**\n\n%s' "$PR_TITLE" "$(printf '%s' "$PR_BODY" | head -c 400)")
+                URL="$PR_URL"; COLOR="green"
+              fi ;;
+            release)
+              if [ "$ACTION" = "published" ]; then
+                SEND=yes; TITLE="🚀 $ACTOR 发布了 ${REL_TAG}"
+                BODY=$(printf '**%s**\n\n%s' "${REL_NAME:-$REL_TAG}" "$(printf '%s' "$REL_BODY" | head -c 400)")
+                URL="$REL_URL"; COLOR="purple"
+              fi ;;
+            issues)
+              if [ "$ACTION" = "opened" ]; then
+                SEND=yes; TITLE="📌 $ACTOR 开了 Issue #$ISSUE_NUM"
+                BODY=$(printf '**%s**\n\nlabels: %s\n\n维护者请 triage（定性 / 转派 / 关掉说明）' "$ISSUE_TITLE" "${ISSUE_LABELS:-无}")
+                URL="$ISSUE_URL"; COLOR="orange"
+              fi ;;
+            push)
+              # 只有 push 到默认分支 且 提交信息带 [群] 才发 —— 发送者自己决定
+              if [ "$REF_NAME" = "$DEFAULT_BRANCH" ] && printf '%s' "$PUSH_MSG" | grep -q '\[群\]'; then
+                SEND=yes; TITLE="📥 $ACTOR 推了代码（主动通知）"
+                BODY=$(printf '%s' "$PUSH_MSG" | sed 's/\[群\]//g' | head -c 500)
+                URL="$PUSH_URL"; COLOR="blue"
+              fi ;;
+            workflow_run)
+              if [ "$CI_CONCLUSION" = "failure" ]; then
+                SEND=yes; TITLE="🔴 $DEFAULT_BRANCH 上 CI 挂了：$CI_NAME"
+                BODY="触发人 $ACTOR。点进去看是哪一步。"
+                URL="$CI_URL"; COLOR="red"
+              fi ;;
+            workflow_dispatch)
+              SEND=yes; TITLE="✅ $REPO 通道自检"; BODY="手动触发，通道正常。"
+              URL="https://github.com/$REPO"; COLOR="turquoise" ;;
+          esac
+          echo "send=$SEND" >> "$GITHUB_OUTPUT"
+          [ "$SEND" = yes ] || { echo "事件 $EVENT/$ACTION 不在通知规则内，跳过"; exit 0; }
+          # 通过文件传，避免多行值进 GITHUB_OUTPUT 的转义坑
+          printf '%s' "$TITLE" > /tmp/title; printf '%s' "$BODY" > /tmp/body
+          printf '%s' "$URL" > /tmp/url; printf '%s' "$COLOR" > /tmp/color
+
+      - name: 发飞书
+        if: steps.build.outputs.send == 'yes'
+        env:
+          APP_ID: ${{ secrets.LARK_APP_ID }}
+          APP_SECRET: ${{ secrets.LARK_APP_SECRET }}
+          CHAT_ID: ${{ inputs.chat_id }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          [ -n "${APP_ID:-}" ] && [ -n "${APP_SECRET:-}" ] || { echo "🔴 缺 LARK 密钥（组织级 secret 没配或调用方没 secrets: inherit）"; exit 1; }
+          TOKEN=$(curl -sS -X POST https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal \
+            -H 'Content-Type: application/json' \
+            -d "$(jq -n --arg a "$APP_ID" --arg s "$APP_SECRET" '{app_id:$a, app_secret:$s}')" | jq -r '.tenant_access_token')
+          [ -n "$TOKEN" ] && [ "$TOKEN" != "null" ] || { echo "取 token 失败"; exit 1; }
+          FULL=$(printf '%s\n\n%s' "$REPO" "$(cat /tmp/body)")
+          CARD=$(jq -nc --rawfile t /tmp/title --rawfile u /tmp/url --rawfile c /tmp/color --arg b "$FULL" \
+            '{config:{wide_screen_mode:true},
+              header:{title:{tag:"plain_text",content:$t},template:$c},
+              elements:[{tag:"div",text:{tag:"lark_md",content:$b}},
+                        {tag:"action",actions:[{tag:"button",text:{tag:"plain_text",content:"在 GitHub 打开"},url:$u,type:"primary"}]}]}')
+          jq -n --arg r "$CHAT_ID" --arg c "$CARD" '{receive_id:$r,msg_type:"interactive",content:$c}' > /tmp/payload.json
+          curl -sS -X POST "https://open.feishu.cn/open-apis/im/v1/messages?receive_id_type=chat_id" \
+            -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+            -d @/tmp/payload.json | jq -e '.code == 0' >/dev/null && echo "✓ 已发"
